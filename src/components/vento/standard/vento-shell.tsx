@@ -1,6 +1,9 @@
-import { cookies } from "next/headers";
+﻿import { cookies } from "next/headers";
 
-import { checkPermissionWithRoleOverride } from "@/lib/auth/role-override";
+import {
+  checkPermissionWithRoleOverride,
+  isPermissionAllowedForRole,
+} from "@/lib/auth/role-override";
 import { createClient } from "@/lib/supabase/server";
 import { VentoChrome } from "./vento-chrome";
 
@@ -50,6 +53,7 @@ type SharedOperationalDeviceRow = {
   allow_actions_without_actor: boolean;
   allowed_app_codes: string[] | null;
   metadata: Record<string, unknown> | null;
+  navigation_role?: string | null;
 };
 
 type OperatingGateMode =
@@ -186,7 +190,7 @@ const APP_SWITCHER_ITEMS: Omit<AppSwitcherItem, "access">[] = [
   {
     id: "nexo",
     name: "NEXO",
-    description: "Inventario y logística.",
+    description: "Inventario y logÃ­stica.",
     logoSrc: "/apps/nexo.svg",
     brandColor: "#F59E0B",
     href: "https://nexo.ventogroup.co",
@@ -236,7 +240,7 @@ const APP_SWITCHER_ITEMS: Omit<AppSwitcherItem, "access">[] = [
   {
     id: "fogo",
     name: "FOGO",
-    description: "Recetas y producción.",
+    description: "Recetas y producciÃ³n.",
     logoSrc: "/apps/fogo.svg",
     brandColor: "#FB7185",
     href: "https://fogo.ventogroup.co",
@@ -306,7 +310,7 @@ function resolveOperatingGate({
       mode: "anima",
       isBlocked: false,
       title: "ANIMA disponible",
-      description: "Desde aquí puedes iniciar o cerrar tu jornada.",
+      description: "Desde aquÃ­ puedes iniciar o cerrar tu jornada.",
       actionHref: ANIMA_URL,
       actionLabel: "Abrir ANIMA",
     };
@@ -317,7 +321,7 @@ function resolveOperatingGate({
       mode: "shared_device",
       isBlocked: false,
       title: "Dispositivo operativo autorizado",
-      description: "Este equipo puede abrir apps permitidas. Cada acción deberá identificar al trabajador con jornada activa.",
+      description: "Este equipo puede abrir apps permitidas. Cada acciÃ³n deberÃ¡ identificar al trabajador con jornada activa.",
       actionHref: ANIMA_URL,
       actionLabel: "Ir a ANIMA",
     };
@@ -339,7 +343,7 @@ function resolveOperatingGate({
       mode: "privileged_bypass",
       isBlocked: false,
       title: "Acceso administrativo",
-      description: "Este rol puede entrar sin jornada activa para administrar o corregir la operación.",
+      description: "Este rol puede entrar sin jornada activa para administrar o corregir la operaciÃ³n.",
       actionHref: ANIMA_URL,
       actionLabel: "Ir a ANIMA",
     };
@@ -458,7 +462,26 @@ async function resolveNavigationItemsForSharedDevice({
 
   if (error || !data) return [];
 
-  return buildNavGroups(data as NavigationRow[]);
+  const rows = data as NavigationRow[];
+  const navigationRole = String(sharedDevice.navigation_role ?? "").trim();
+  if (!navigationRole) return [];
+
+  const permissionResults = await Promise.all(
+    rows.map(async (row) => {
+      const permissionCode = String(row.required_permission_code ?? "").trim();
+      if (!permissionCode) return false;
+
+      const { appId, code } = splitPermissionCode(permissionCode, appCode);
+      if (!code) return false;
+
+      return isPermissionAllowedForRole(supabase, navigationRole, appId, code, {
+        siteId: sharedDevice.site_id ?? null,
+        areaId: sharedDevice.area_id ?? null,
+      });
+    })
+  );
+
+  return buildNavGroups(rows.filter((_, index) => permissionResults[index]));
 }
 
 async function resolveActiveWorkContext({
@@ -726,7 +749,7 @@ export async function VentoShell({ children }: { children: React.ReactNode }) {
 
       activeWorkContextLabel = "Dispositivo compartido";
       activeWorkContextDescription = currentAppAllowed
-        ? `${sharedDevice.label} · Cada acción sensible requiere trabajador con jornada activa.`
+        ? `${sharedDevice.label} Â· Cada acciÃ³n sensible requiere trabajador con jornada activa.`
         : operatingGate.description;
 
       if (activeSiteId) {
@@ -905,3 +928,5 @@ export async function VentoShell({ children }: { children: React.ReactNode }) {
     </VentoChrome>
   );
 }
+
+
