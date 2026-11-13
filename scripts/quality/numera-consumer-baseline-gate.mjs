@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url';
 export const CI012_INSTANCE_ID = 'SHELL-CI-012::GLOBAL';
 export const CI012_SCHEMA_VERSION = 1;
 export const CI012_SOURCE_CONTRACT_SHA256 = '2312fac8915215bae075e9abc517970cd470f620f6aecce00d5f3da32be6e4c9';
-export const CONSUMER_REPOSITORY = 'devVentoGroup/vento-numera';
+export const CONSUMER_REPOSITORY = 'vento-group-sas/vento-numera';
 export const CONSUMER_NAME = 'vento-numera';
 export const CONTRACTUAL_TEST_COUNT = 42;
 
